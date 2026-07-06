@@ -9,9 +9,11 @@ ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
 ENV NEXT_PUBLIC_SCRIPT_ID=$NEXT_PUBLIC_SCRIPT_ID
 ENV NEXT_PUBLIC_USER_ID=$NEXT_PUBLIC_USER_ID
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm ci --include=dev \
+    && npm ls next \
+    && test -f node_modules/next/dist/bin/next
 COPY frontend/ ./
-RUN ./node_modules/.bin/next build
+RUN node node_modules/next/dist/bin/next build
 
 FROM python:3.12-slim-bookworm AS runtime
 ENV PYTHONUNBUFFERED=1 \
