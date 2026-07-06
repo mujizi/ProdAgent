@@ -20,6 +20,15 @@ Next.js Chat 页面 ──直连──> FastAPI /api/chat/stream
 
 ## 快速启动
 
+**0) 一键安装依赖**
+```bash
+git clone git@github.com:mujizi/ProdAgent.git
+cd ProdAgent
+bash scripts/install.sh
+```
+
+然后填写 `backend/.env` 里的真实密钥、Mongo、Redis 配置。
+
 **1) 后端**（详见 [`backend/README.md`](backend/README.md)）
 ```bash
 cd backend
@@ -37,6 +46,32 @@ npm run dev            # http://localhost:3000，直连后端 8000
 ```
 
 前端通过 `NEXT_PUBLIC_API_BASE`（默认 `http://localhost:8000`）和 `NEXT_PUBLIC_SCRIPT_ID`（默认肖申克救赎剧本）连后端。
+
+## Docker
+
+先准备环境文件：
+```bash
+cp backend/.env.example backend/.env
+# 填写 backend/.env
+```
+
+一键构建并运行镜像：
+```bash
+bash scripts/docker-run.sh
+```
+
+默认暴露：
+- 前端 `http://localhost:3000`
+- 后端 `http://localhost:8000/health`
+
+可覆盖参数：
+```bash
+BACKEND_PORT=18000 FRONTEND_PORT=13000 \
+NEXT_PUBLIC_API_BASE=http://localhost:18000 \
+SCRIPT_ID=690c1b6736c9c50c40160976 \
+USER_ID=dev_user_frontend \
+bash scripts/docker-run.sh
+```
 
 ## 功能
 
