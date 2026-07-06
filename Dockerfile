@@ -11,7 +11,7 @@ ENV NEXT_PUBLIC_USER_ID=$NEXT_PUBLIC_USER_ID
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
-RUN npx next build
+RUN ./node_modules/.bin/next build
 
 FROM python:3.12-slim-bookworm AS runtime
 ENV PYTHONUNBUFFERED=1 \
