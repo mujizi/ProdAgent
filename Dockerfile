@@ -25,9 +25,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends nodejs npm curl \
-    && rm -rf /var/lib/apt/lists/*
+# Avoid apt-get in the runtime image: some deployment networks cannot resolve
+# deb.debian.org during build. Reuse the Node runtime from the frontend stage.
+COPY --from=frontend-deps /usr/local/bin/node /usr/local/bin/node
+COPY --from=frontend-deps /usr/local/bin/npm /usr/local/bin/npm
+COPY --from=frontend-deps /usr/local/bin/npx /usr/local/bin/npx
+COPY --from=frontend-deps /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
