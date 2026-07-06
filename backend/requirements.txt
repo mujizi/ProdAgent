@@ -1,0 +1,12 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+pymongo==4.9.1
+redis==5.0.8
+openai==1.51.2          # 用 AsyncOpenAI 兼容模式
+httpx[socks]==0.27.2    # 钉版本：openai 1.51 与 httpx>=0.28 的 proxies 参数不兼容；SOCKS 代理需要 socksio
+python-dotenv==1.0.1
+loguru==0.7.2
+pytest==8.3.3
+pytest-asyncio==0.24.0

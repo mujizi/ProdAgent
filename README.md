@@ -1,0 +1,59 @@
+# ProdAgent — 剧本问答 Agent（本地第一版）
+
+自写 Tool Loop 的剧本问答系统：FastAPI 后端 + Next.js 前端，LLM 走阿里云百炼 OpenAI 兼容模式（`qwen3.7-max`），数据查询走 MongoDB 只读工具，终答 SSE 逐 token 流式。
+
+开发计划与决策见 [`DEV_PLAN.md`](DEV_PLAN.md)。
+
+## 架构
+
+```
+Next.js Chat 页面 ──直连──> FastAPI /api/chat/stream
+                                  ↓ 自写 Agent Loop
+                    工具轮(非流式)        终答(流式, 不传 tools)
+                          ↓
+                  execute_mongo_query (pymongo + run_in_threadpool)
+                          ↓
+                  MongoDB 三表(只读) → 预算硬截断 → SSE
+                          ↓
+                  内存 history + JSONL + 旧结果压缩
+```
+
+## 快速启动
+
+**1) 后端**（详见 [`backend/README.md`](backend/README.md)）
+```bash
+cd backend
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # 填 DASHSCOPE_* / MONGO_URI / MONGO_DB
+uvicorn app.main:app --reload --port 8000
+```
+
+**2) 前端**
+```bash
+cd frontend
+npm install
+npm run dev            # http://localhost:3000，直连后端 8000
+```
+
+前端通过 `NEXT_PUBLIC_API_BASE`（默认 `http://localhost:8000`）和 `NEXT_PUBLIC_SCRIPT_ID`（默认肖申克救赎剧本）连后端。
+
+## 功能
+
+- ChatGPT 风格消息列表 / 输入 / **＋ New Chat**（新 session、清空消息）
+- assistant 终答逐 token 流式（rAF 节流，长回答不卡）
+- tool 独占一行：tool_name + purpose + preview，展开看完整结果，显示 truncated / estimated_tokens / truncation_reason
+- 多轮追问 + 指代消解（"那场 / 她 / 当时" 结合历史）
+
+## 测试
+
+后端真实测试（无假数据，默认剧本 `690c1b6736c9c50c40160976`）：
+```bash
+cd backend
+bash scripts/run_all_tests.sh                                     # 离线 + 真实 Mongo
+RUN_LLM_TESTS=1 RUN_STREAM_TESTS=1 bash scripts/run_all_tests.sh  # 全量（需先启动后端）
+```
+
+## 现状
+
+后端全链路已真实端到端验证（DashScope Qwen 冒烟 / 真实 Mongo 工具 / Agent Loop 多轮 / HTTP SSE / 离线 pytest），前端已用真实浏览器验证（流式 / tool 展示 / New Chat）。第一版范围与未做项见 `DEV_PLAN.md` §1。
