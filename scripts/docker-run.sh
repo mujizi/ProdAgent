@@ -13,6 +13,8 @@ SCRIPT_ID="${SCRIPT_ID:-690c1b6736c9c50c40160976}"
 USER_ID="${USER_ID:-dev_user_frontend}"
 API_BASE="${NEXT_PUBLIC_API_BASE:-http://localhost:${BACKEND_PORT}}"
 ENV_FILE="${ENV_FILE:-$ROOT/backend/.env}"
+NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmmirror.com}"
+PIP_INDEX_URL="${PIP_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}"
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "未找到 env 文件：$ENV_FILE"
@@ -21,6 +23,8 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 docker build \
+  --build-arg NPM_REGISTRY="$NPM_REGISTRY" \
+  --build-arg PIP_INDEX_URL="$PIP_INDEX_URL" \
   --build-arg NEXT_PUBLIC_API_BASE="$API_BASE" \
   --build-arg NEXT_PUBLIC_SCRIPT_ID="$SCRIPT_ID" \
   --build-arg NEXT_PUBLIC_USER_ID="$USER_ID" \

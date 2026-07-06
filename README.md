@@ -60,6 +60,17 @@ cp backend/.env.example backend/.env
 bash scripts/docker-run.sh
 ```
 
+脚本默认使用国内镜像源：
+- npm: `https://registry.npmmirror.com`
+- pip: `https://pypi.tuna.tsinghua.edu.cn/simple`
+
+如果你的机器访问官方源更稳定，可以覆盖：
+```bash
+NPM_REGISTRY=https://registry.npmjs.org \
+PIP_INDEX_URL=https://pypi.org/simple \
+bash scripts/docker-run.sh
+```
+
 默认暴露：
 - 前端 `http://localhost:3000`
 - 后端 `http://localhost:8000/health`

@@ -2,6 +2,7 @@
 
 FROM node:20-bookworm-slim AS frontend-build
 WORKDIR /app/frontend
+ARG NPM_REGISTRY=https://registry.npmmirror.com
 ARG NEXT_PUBLIC_API_BASE=http://localhost:8000
 ARG NEXT_PUBLIC_SCRIPT_ID=690c1b6736c9c50c40160976
 ARG NEXT_PUBLIC_USER_ID=dev_user_frontend
@@ -9,8 +10,11 @@ ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
 ENV NEXT_PUBLIC_SCRIPT_ID=$NEXT_PUBLIC_SCRIPT_ID
 ENV NEXT_PUBLIC_USER_ID=$NEXT_PUBLIC_USER_ID
 COPY frontend/package*.json ./
-RUN npm ci --include=dev \
-    && npm ls next \
+RUN npm config set registry "$NPM_REGISTRY" \
+    && npm config set fetch-retries 5 \
+    && npm config set fetch-retry-mintimeout 20000 \
+    && npm config set fetch-retry-maxtimeout 120000 \
+    && npm ci --include=dev --no-audit --no-fund --loglevel=warn \
     && test -f node_modules/next/dist/bin/next
 COPY frontend/ ./
 RUN node node_modules/next/dist/bin/next build
@@ -31,7 +35,8 @@ COPY --from=frontend-build /usr/local/bin/npx /usr/local/bin/npx
 COPY --from=frontend-build /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+ARG PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install --no-cache-dir -i "$PIP_INDEX_URL" -r /app/backend/requirements.txt
 
 COPY backend/app /app/backend/app
 COPY backend/pytest.ini /app/backend/pytest.ini
