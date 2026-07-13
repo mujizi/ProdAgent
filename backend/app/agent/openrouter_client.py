@@ -11,6 +11,7 @@ from __future__ import annotations
 import time
 from typing import Any, AsyncIterator
 
+import httpx
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 
 from app.config import settings
@@ -25,6 +26,14 @@ _azure_client: AsyncAzureOpenAI | None = None
 LAST_PROMPT_TOKENS: int | None = None
 
 
+def _build_http_client() -> httpx.AsyncClient:
+    """LLM 请求直连模型服务，避免继承本机代理导致间歇性连接失败。"""
+    return httpx.AsyncClient(
+        timeout=httpx.Timeout(settings.llm_timeout_seconds),
+        trust_env=False,
+    )
+
+
 def get_client() -> AsyncOpenAI:
     global _client
     if _client is None:
@@ -33,6 +42,9 @@ def get_client() -> AsyncOpenAI:
         _client = AsyncOpenAI(
             api_key=settings.dashscope_api_key,
             base_url=settings.dashscope_base_url,
+            timeout=settings.llm_timeout_seconds,
+            max_retries=settings.llm_max_retries,
+            http_client=_build_http_client(),
         )
     return _client
 
@@ -46,6 +58,9 @@ def get_azure_client() -> AsyncAzureOpenAI:
             api_key=settings.azure_openai_api_key,
             azure_endpoint=settings.azure_openai_endpoint,
             api_version=settings.azure_openai_api_version,
+            timeout=settings.llm_timeout_seconds,
+            max_retries=settings.llm_max_retries,
+            http_client=_build_http_client(),
         )
     return _azure_client
 

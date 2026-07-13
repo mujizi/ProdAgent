@@ -14,7 +14,6 @@ db = client[settings.mongo_db]
 
 outline = db["seca_gen_scene_outline"]
 element = db["seca_element_type_detail"]
-analysis = db["seca_scene_analysis"]
 
 print("===== 1) element_type_code 枚举（采样 3000 条统计）=====")
 codes = Counter()
@@ -29,30 +28,29 @@ for c, n in codes.most_common():
     print(f"  {c}: {n}  样例={names_by_code.get(c)}")
 
 print("\n===== 2) is_deleted 取值分布（各表采样 2000）=====")
-for name, coll in [("outline", outline), ("element", element), ("analysis", analysis)]:
+for name, coll in [("outline", outline), ("element", element)]:
     vals = Counter(d.get("is_deleted") for d in coll.find({}, {"is_deleted": 1}).limit(2000))
     print(f"  {name}: {dict(vals)}")
 
-print("\n===== 3) 找一个三表都有数据的 script_id =====")
-# 用 element 表里某个 script_id 去三表查
+print("\n===== 3) 找一个目标表都有数据的 script_id =====")
+# 用 element 表里某个 script_id 去目标表查
 candidate = None
 for sid in element.distinct("script_id")[:40]:
     if not sid:
         continue
     o = outline.count_documents({"script_id": sid, "is_deleted": 0}, limit=1)
-    a = analysis.count_documents({"script_id": sid, "is_deleted": 0}, limit=1)
     e = element.count_documents({"script_id": sid, "is_deleted": 0}, limit=1)
-    if o and a and e:
+    if o and e:
         candidate = sid
-        print(f"  ✓ 三表齐全 script_id={sid}")
+        print(f"  ✓ 目标表齐全 script_id={sid}")
         break
     else:
-        print(f"  - {sid}: outline={o} analysis={a} element={e}")
+        print(f"  - {sid}: outline={o} element={e}")
 
 if candidate:
     sid = candidate
     print(f"\n===== 4) script_id={sid} 多版本检查 =====")
-    for name, coll in [("outline", outline), ("element", element), ("analysis", analysis)]:
+    for name, coll in [("outline", outline), ("element", element)]:
         vers = coll.distinct("version_id", {"script_id": sid})
         cnt = coll.count_documents({"script_id": sid, "is_deleted": 0})
         print(f"  {name}: doc_count={cnt} version_ids={vers}")

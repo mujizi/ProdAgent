@@ -25,6 +25,8 @@ async def debug_tool(req: ToolDebugRequest):
         "estimated_tokens": result.estimated_tokens,
         "estimated_tokens_before": result.estimated_tokens_before,
         "truncation_reason": result.truncation_reason,
+        "error_code": result.error_code,
+        "coverage": result.coverage,
     }
 
 

@@ -1,9 +1,9 @@
 """真实 Mongo Tool 端到端测试（plan §15 scripts）。
 
 用真实 script_id 对真库执行 execute_mongo_query，断言：
-- 正常查询（摘要/原文拼接/元素）
+- 正常查询（原文摘要/原文拼接/元素）
 - 非法 collection / operation / $where 被拒
-- limit=999→50；content 查询 limit→10
+- limit=999→50；content 查询 limit→50
 - content_text 拼接非空；超长截断；is_deleted 注入
 
 运行：python scripts/test_mongo_tool.py
@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.tools.mongo_query_tool import execute_mongo_query  # noqa: E402
 from app.tools.budget import TOOL_RESULT_TRUNCATED  # noqa: E402
 
-SCRIPT_ID = "690c1b6736c9c50c40160976"  # 肖申克的救赎（三表齐全，单版本）
+SCRIPT_ID = "6a4f56a54bc764f6d3181d83"
 
 passed = 0
 failed = 0
@@ -35,13 +35,15 @@ def check(name, cond, extra=""):
 def main():
     print(f"script_id = {SCRIPT_ID}\n")
 
-    # 1) 场景摘要表正常查询
-    print("[1] seca_scene_analysis 查第1场摘要")
+    # 1) 原文表场次摘要正常查询
+    print("[1] seca_gen_scene_outline 查第1场摘要")
     r = execute_mongo_query(SCRIPT_ID, {
-        "collection": "seca_scene_analysis", "operation": "find",
-        "filter": {"scene_sort": 1}, "purpose": "第1场摘要"})
-    check("摘要返回非空", r.row_count >= 1, f"row_count={r.row_count}")
-    check("含 scene_brief", "scene_brief" in r.full_result)
+        "collection": "seca_gen_scene_outline", "operation": "find",
+        "filter": {"scene_sort": 1},
+        "projection": {"_id": 0, "scene_sort": 1, "scene_title": 1, "scene_summary": 1},
+        "purpose": "第1场摘要"})
+    check("原文表摘要返回非空", r.row_count >= 1, f"row_count={r.row_count}")
+    check("含 scene_summary", "scene_summary" in r.full_result)
     check("不含 is_deleted 噪音", "is_deleted" not in r.full_result)
 
     # 2) 原文表 content_text 拼接
@@ -66,7 +68,7 @@ def main():
     # 4) count 操作
     print("\n[4] count 全剧场景数")
     r = execute_mongo_query(SCRIPT_ID, {
-        "collection": "seca_scene_analysis", "operation": "count",
+        "collection": "seca_gen_scene_outline", "operation": "count",
         "purpose": "场景总数"})
     check("count 返回", '"count":' in r.full_result, r.full_result.splitlines()[-2:])
 
@@ -79,36 +81,36 @@ def main():
     # 6) 非法 operation 被拒
     print("\n[6] 非法 operation 被拒")
     r = execute_mongo_query(SCRIPT_ID, {
-        "collection": "seca_scene_analysis", "operation": "delete", "purpose": "非法"})
+        "collection": "seca_gen_scene_outline", "operation": "delete", "purpose": "非法"})
     check("被拒绝", "拒绝" in r.full_result)
 
     # 7) $where 被拒
     print("\n[7] $where 被拒")
     r = execute_mongo_query(SCRIPT_ID, {
-        "collection": "seca_scene_analysis", "operation": "find",
+        "collection": "seca_gen_scene_outline", "operation": "find",
         "filter": {"$where": "this.x==1"}, "purpose": "非法"})
     check("被拒绝", "拒绝" in r.full_result)
 
     # 8) limit=999 → 50（非 content 查询）
     print("\n[8] limit=999 归一到 50")
     r = execute_mongo_query(SCRIPT_ID, {
-        "collection": "seca_scene_analysis", "operation": "find",
+        "collection": "seca_gen_scene_outline", "operation": "find",
         "filter": {}, "projection": {"_id": 0, "scene_sort": 1, "scene_title": 1},
         "limit": 999, "purpose": "全部场景标题"})
     check("行数<=50", r.row_count <= 50, f"row_count={r.row_count}")
 
-    # 9) content 查询 limit → 10
-    print("\n[9] content 查询 limit 上限 10")
+    # 9) content 查询 limit → 50
+    print("\n[9] content 查询 limit 上限 50")
     r = execute_mongo_query(SCRIPT_ID, {
         "collection": "seca_gen_scene_outline", "operation": "find",
         "filter": {}, "limit": 50, "purpose": "大量原文"})
-    check("行数<=10", r.row_count <= 10, f"row_count={r.row_count}")
+    check("行数<=50", r.row_count <= 50, f"row_count={r.row_count}")
 
     # 10) 超长 content 截断
     print("\n[10] 大范围原文触发截断")
     check("出现截断标记或 row_count 受限",
           (TOOL_RESULT_TRUNCATED in r.full_result) or r.truncated or r.field_truncated
-          or r.row_count <= 10,
+          or r.row_count <= 50,
           f"truncated={r.truncated} field_truncated={r.field_truncated} "
           f"est_tokens={r.estimated_tokens}")
 

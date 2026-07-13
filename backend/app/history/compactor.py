@@ -19,8 +19,8 @@ from app.tools.budget import estimate_tokens
 
 COMPRESSED_PLACEHOLDER = (
     "[TOOL_RESULT_COMPRESSED]\n"
-    "早期 Mongo 查询结果已从当前上下文中压缩，不能作为精确事实依据。\n"
-    "如后续问题需要准确细节，请重新调用 execute_mongo_query 查询。"
+    "早期资料查询结果已从当前上下文中压缩，不能作为精确事实依据。\n"
+    "如后续问题需要准确细节，请重新查询剧本资料。"
 )
 
 

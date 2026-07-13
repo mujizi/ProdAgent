@@ -60,6 +60,14 @@ class BudgetResult:
     truncation_reason: str | None
 
 
+def tool_budget_max_chars() -> int:
+    """返回单个工具正文可用的保守字符预算。"""
+    return min(
+        settings.max_tool_chars,
+        settings.max_tool_estimated_tokens * settings.chars_per_token,
+    )
+
+
 def enforce_tool_budget(body: str) -> BudgetResult:
     """对“最终拼好的工具结果文本的尾部内容”做整体预算硬截断。
 
@@ -68,11 +76,7 @@ def enforce_tool_budget(body: str) -> BudgetResult:
     """
     before_tokens = estimate_tokens(body)
 
-    # 上限：min(MAX_TOOL_CHARS, MAX_TOOL_ESTIMATED_TOKENS * CHARS_PER_TOKEN)
-    hard_max_chars = min(
-        settings.max_tool_chars,
-        settings.max_tool_estimated_tokens * settings.chars_per_token,
-    )
+    hard_max_chars = tool_budget_max_chars()
 
     if len(body) <= hard_max_chars:
         return BudgetResult(

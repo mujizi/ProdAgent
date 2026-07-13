@@ -20,7 +20,7 @@ from app.history.local_history_store import get_history, get_summary  # noqa: E4
 from app.history.session_compactor import split_turns  # noqa: E402
 from app.logging_config import setup_logging  # noqa: E402
 
-SCRIPT_ID = "690c1b6736c9c50c40160976"
+SCRIPT_ID = "6a4f56a54bc764f6d3181d83"
 SESSION = "sess_compaction_e2e"
 
 

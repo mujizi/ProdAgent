@@ -11,8 +11,8 @@ FRONTEND="$ROOT/frontend"
 
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 FRONTEND_PORT="${FRONTEND_PORT:-3000}"
-# 默认真剧本：肖申克的救赎（三表齐全）
-SCRIPT_ID="${SCRIPT_ID:-690c1b6736c9c50c40160976}"
+# 默认测试剧本
+SCRIPT_ID="${SCRIPT_ID:-6a4f56a54bc764f6d3181d83}"
 USER_ID="${USER_ID:-dev_user_frontend}"
 
 PY="$BACKEND/.venv/bin/python"
@@ -62,9 +62,9 @@ BACK_PID=$!
 # 等后端健康
 echo -n "等待后端就绪"
 for i in $(seq 1 30); do
-  if curl -sf "http://localhost:$BACKEND_PORT/health" >/dev/null 2>&1; then
+  if curl --noproxy '*' -sf "http://localhost:$BACKEND_PORT/health" >/dev/null 2>&1; then
     echo ""
-    grn "后端就绪：$(curl -s http://localhost:$BACKEND_PORT/health)"
+    grn "后端就绪：$(curl --noproxy '*' -s http://localhost:$BACKEND_PORT/health)"
     break
   fi
   echo -n "."
@@ -88,7 +88,7 @@ FRONT_PID=$!
 # 等前端就绪
 echo -n "等待前端就绪"
 for i in $(seq 1 40); do
-  if curl -sf "http://localhost:$FRONTEND_PORT" >/dev/null 2>&1; then
+  if curl --noproxy '*' -sf "http://localhost:$FRONTEND_PORT" >/dev/null 2>&1; then
     echo ""
     break
   fi

@@ -5,7 +5,7 @@
 - operation 白名单（find / count）
 - 禁止危险 operator（$out/$merge/$where/$function/$accumulator 等）
 - 规范化超长 regex（优先保留前若干个 | 分隔关键词）
-- limit normalize（默认 20，最大 50；查 content 时最大 10）
+- limit normalize（默认 20，最大 50；查 content 时最大 content_query_limit_max）
 - 强制注入 script_id
 - projection 默认 {"_id": 0}
 """
@@ -15,22 +15,17 @@ from app.config import settings
 
 ALLOWED_COLLECTIONS = {
     "seca_gen_scene_outline",    # 剧本原文表（contents 拼接）
-    "seca_scene_analysis",       # 场景摘要表（scene_brief）
     "seca_element_type_detail",  # 元素表（人物/服装/化妆/道具/场景）
 }
 
 ALLOWED_OPERATIONS = {"find", "count"}
 
 # 每表默认精简 projection（模型未指定 projection 时使用，去噪省 token）。
-# outline 默认含 contents → 命中 content → limit 上限压到 10。
+# outline 默认含 contents，单次数据库候选读取上限由 content_query_limit_max 控制。
 DEFAULT_PROJECTIONS = {
     "seca_gen_scene_outline": {
         "_id": 0, "scene_sort": 1, "scene_title": 1,
         "scene_summary": 1, "contents": 1,
-    },
-    "seca_scene_analysis": {
-        "_id": 0, "scene_sort": 1, "scene_title": 1, "scene_brief": 1,
-        "scene_location": 1, "interior_exterior": 1, "time_of_day": 1,
     },
     "seca_element_type_detail": {
         "_id": 0, "element_type_code": 1, "element_name": 1, "remark": 1,
@@ -47,9 +42,12 @@ FORBIDDEN_OPERATORS = {
     "$expr",  # 可携带 $function，保守禁用
 }
 
-# content 类字段：命中则把 limit 压到 content_limit_max(=10)。
+# content 类字段：命中则把 limit 压到 content_query_limit_max。
 # "content" 是 "contents" / "content_text" 的子串，统一覆盖原文字段。
 CONTENT_FIELD_HINTS = {"content", "original", "text", "raw"}
+
+OUTLINE_COLLECTION = "seca_gen_scene_outline"
+OUTLINE_SCENE_FILTER_KEYS = {"scene_sort"}
 
 
 class GuardError(ValueError):
@@ -144,6 +142,49 @@ def _projection_touches_content(projection: dict | None) -> bool:
     return False
 
 
+def _contains_scene_sort(obj) -> bool:
+    if isinstance(obj, dict):
+        return "scene_sort" in obj or any(
+            _contains_scene_sort(value) for value in obj.values()
+        )
+    if isinstance(obj, list):
+        return any(_contains_scene_sort(item) for item in obj)
+    return False
+
+
+def _collect_and_scene_sort_filters(obj) -> list:
+    """收集顶层和 $and 中的 scene_sort；拒绝无法无损简化的 $or。"""
+    if not isinstance(obj, dict):
+        return []
+    if "$or" in obj and _contains_scene_sort(obj["$or"]):
+        raise GuardError("原文场次条件不支持 $or，请拆成独立的 scene_sort 范围查询")
+
+    found = [obj["scene_sort"]] if "scene_sort" in obj else []
+    items = obj.get("$and")
+    if isinstance(items, list):
+        for item in items:
+            found.extend(_collect_and_scene_sort_filters(item))
+    return found
+
+
+def _strip_outline_text_filters(filter_: dict) -> dict:
+    scene_filters = _collect_and_scene_sort_filters(filter_)
+    if not scene_filters:
+        return {}
+    if len(scene_filters) > 1:
+        raise GuardError("原文查询只能提供一个 scene_sort 条件，请先合并为单一范围")
+    return {"scene_sort": scene_filters[0]}
+
+
+def _ensure_outline_original_projection(projection: dict) -> dict:
+    safe_projection = dict(projection)
+    safe_projection.setdefault("_id", 0)
+    safe_projection.setdefault("scene_sort", 1)
+    safe_projection.setdefault("scene_title", 1)
+    safe_projection.setdefault("contents", 1)
+    return safe_projection
+
+
 def validate_and_normalize(script_id: str, args: dict) -> dict:
     """校验并规范化工具参数，返回可直接执行的安全 args。
 
@@ -165,6 +206,10 @@ def validate_and_normalize(script_id: str, args: dict) -> dict:
     if operation not in ALLOWED_OPERATIONS:
         raise GuardError(
             f"operation 不允许: {operation!r}，只支持 {sorted(ALLOWED_OPERATIONS)}"
+        )
+    if collection == OUTLINE_COLLECTION and operation == "count":
+        raise GuardError(
+            "剧本原文不支持 count；文档数不等于场次数，请用 find 读取 scene_sort 核实"
         )
 
     filter_ = args.get("filter") or {}
@@ -198,6 +243,10 @@ def validate_and_normalize(script_id: str, args: dict) -> dict:
         if part:
             _check_regex_length(part)
 
+    # 原文表不要用人物名/关键词做文本过滤；只保留 scene_sort 范围。
+    if collection == OUTLINE_COLLECTION and operation == "find":
+        filter_ = _strip_outline_text_filters(filter_)
+
     # 强制注入 script_id + is_deleted=0（覆盖模型可能传入的同名字段）
     safe_filter = dict(filter_)
     safe_filter["script_id"] = script_id
@@ -209,17 +258,30 @@ def validate_and_normalize(script_id: str, args: dict) -> dict:
         safe_projection.setdefault("_id", 0)
     else:
         safe_projection = dict(DEFAULT_PROJECTIONS[collection])
+    if collection == OUTLINE_COLLECTION and operation == "find":
+        safe_projection = _ensure_outline_original_projection(safe_projection)
 
     # limit normalize（基于“最终生效的 projection”判断是否查 content）
     raw_limit = args.get("limit")
-    limit = settings.default_tool_limit if raw_limit is None else int(raw_limit)
+    if raw_limit is not None and (
+        isinstance(raw_limit, bool) or not isinstance(raw_limit, int)
+    ):
+        raise GuardError("limit 必须是整数")
+    if raw_limit is None and collection == OUTLINE_COLLECTION and operation == "find":
+        limit = min(settings.max_tool_rows, settings.content_query_limit_max)
+    else:
+        limit = settings.default_tool_limit if raw_limit is None else raw_limit
     if limit < 1:
         limit = 1
     cap = settings.max_tool_rows
     if operation == "find" and _projection_touches_content(safe_projection):
-        cap = min(cap, settings.content_limit_max)
+        cap = min(cap, settings.content_query_limit_max)
     if limit > cap:
         limit = cap
+
+    if collection == OUTLINE_COLLECTION and operation == "find":
+        # 完整场次分页依赖相同 scene_sort 连续且方向稳定，不接受模型自定义排序。
+        sort = {"scene_sort": 1, "_id": 1}
 
     return {
         "collection": collection,

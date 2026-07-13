@@ -6,11 +6,11 @@ export function newSessionId(): string {
 }
 
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+  process.env.NEXT_PUBLIC_API_BASE || "http://172.16.2.79:8000";
 
 // 默认剧本：肖申克的救赎（后端真实数据，三表齐全）
 export const DEFAULT_SCRIPT_ID =
-  process.env.NEXT_PUBLIC_SCRIPT_ID || "690c1b6736c9c50c40160976";
+  process.env.NEXT_PUBLIC_SCRIPT_ID || "6a4f56a54bc764f6d3181d83";
 
 export const DEFAULT_USER_ID =
   process.env.NEXT_PUBLIC_USER_ID || "dev_user_frontend";

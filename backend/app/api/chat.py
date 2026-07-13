@@ -79,6 +79,10 @@ async def chat(req: ChatRequest) -> ChatResponse:
             if lines and lines[0] == "event: delta":
                 data = json.loads(lines[1][len("data: "):])
                 answer_parts.append(data.get("text", ""))
+            elif lines and lines[0] == "event: error":
+                data = json.loads(lines[1][len("data: "):])
+                answer_parts.append(data.get("message", "服务暂时不可用，可以稍后再试。"))
+                break
     finally:
         release_session_lock(ref.session_key, trace_id)
     return ChatResponse(

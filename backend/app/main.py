@@ -32,10 +32,28 @@ async def _startup():
         redis_client.ping()
     if settings.history_persist_mongo:
         ensure_history_indexes()
+    history_mongo_configured = bool(
+        (settings.history_mongo_uri or settings.mongo_uri)
+        and (settings.history_mongo_db or settings.mongo_db)
+    )
     _log.info(
-        f"app_startup env={settings.app_env} provider={settings.llm_provider} model={settings.llm_model} "
-        f"mongo_configured={bool(settings.mongo_uri)} "
+        f"app_startup env={settings.app_env} "
+        f"llm_provider={settings.llm_provider} llm_model={settings.llm_model} "
+        f"summary_model={settings.summary_model or settings.llm_model} "
         f"llm_configured={settings.llm_configured} "
-        f"redis_configured={bool(settings.redis_url)} "
-        f"history_mongo_configured={bool((settings.history_mongo_uri or settings.mongo_uri) and (settings.history_mongo_db or settings.mongo_db))}"
+        f"azure_fallback_enabled={settings.azure_fallback_enabled} "
+        f"azure_fallback_configured={settings.azure_fallback_configured} "
+        f"mongo_configured={bool(settings.mongo_uri and settings.mongo_db)} "
+        f"history_store={'redis' if settings.redis_url else 'memory'} "
+        f"history_redis_required={settings.history_redis_required} "
+        f"history_persist_mongo={settings.history_persist_mongo} "
+        f"history_mongo_configured={history_mongo_configured} "
+        f"cors_origins={settings.cors_origin_list!r} "
+        f"max_tool_rounds={settings.max_tool_rounds} "
+        f"max_tool_chars={settings.max_tool_chars} "
+        f"max_tool_estimated_tokens={settings.max_tool_estimated_tokens} "
+        f"max_content_field_chars={settings.max_content_field_chars} "
+        f"content_query_limit_max={settings.content_query_limit_max} "
+        f"model_max_input_tokens={settings.model_max_input_tokens} "
+        f"chars_per_token={settings.chars_per_token}"
     )

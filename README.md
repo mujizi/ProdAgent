@@ -13,9 +13,9 @@ Next.js Chat 页面 ──直连──> FastAPI /api/chat/stream
                           ↓
                   execute_mongo_query (pymongo + run_in_threadpool)
                           ↓
-                  MongoDB 三表(只读) → 预算硬截断 → SSE
+                MongoDB 两张工具表(只读) → 预算硬截断 → SSE
                           ↓
-                  内存 history + JSONL + 旧结果压缩
+               Redis/内存 history + Mongo 持久化 + JSONL + 旧结果压缩
 ```
 
 ## 快速启动
@@ -45,7 +45,7 @@ npm install
 npm run dev            # http://localhost:3000，直连后端 8000
 ```
 
-前端通过 `NEXT_PUBLIC_API_BASE`（默认 `http://localhost:8000`）和 `NEXT_PUBLIC_SCRIPT_ID`（默认肖申克救赎剧本）连后端。
+前端通过 `NEXT_PUBLIC_API_BASE` 和 `NEXT_PUBLIC_SCRIPT_ID` 连接后端。当前源码 API fallback 为 `http://172.16.2.79:8000`；本机开发请显式设置 `NEXT_PUBLIC_API_BASE=http://localhost:8000`。
 
 ## Docker
 
@@ -79,7 +79,7 @@ bash scripts/docker-run.sh
 ```bash
 BACKEND_PORT=18000 FRONTEND_PORT=13000 \
 NEXT_PUBLIC_API_BASE=http://localhost:18000 \
-SCRIPT_ID=690c1b6736c9c50c40160976 \
+SCRIPT_ID=6a4f56a54bc764f6d3181d83 \
 USER_ID=dev_user_frontend \
 bash scripts/docker-run.sh
 ```
@@ -90,10 +90,12 @@ bash scripts/docker-run.sh
 - assistant 终答逐 token 流式（rAF 节流，长回答不卡）
 - tool 独占一行：tool_name + purpose + preview，展开看完整结果，显示 truncated / estimated_tokens / truncation_reason
 - 多轮追问 + 指代消解（"那场 / 她 / 当时" 结合历史）
+- 工具循环最多 15 轮；单次工具结果预算为 32K 字符 / 16K 估算 token，content 查询最多 50 行
+- 会话热历史使用 Redis（可回退内存），完整消息可持久化到 MongoDB，并按 500K token 输入窗口压缩
 
 ## 测试
 
-后端真实测试（无假数据，默认剧本 `690c1b6736c9c50c40160976`）：
+后端真实测试（无假数据，默认剧本 `6a4f56a54bc764f6d3181d83`）：
 ```bash
 cd backend
 bash scripts/run_all_tests.sh                                     # 离线 + 真实 Mongo

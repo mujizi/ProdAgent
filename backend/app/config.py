@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     dashscope_model: str = "qwen3.7-max"
     dashscope_enable_thinking: bool = False
     dashscope_max_tokens: int = 0
+    llm_timeout_seconds: float = 120.0
+    llm_max_retries: int = 2
 
     # Azure fallback: used when DashScope/Qwen rejects input via provider risk control.
     azure_openai_api_key: str = ""
@@ -58,13 +60,14 @@ class Settings(BaseSettings):
     history_redis_required: bool = False
 
     # Agent / 工具循环。max_tool_rounds<=0 表示不限轮数（由模型自行停止结束）
-    max_tool_rounds: int = 0
+    max_tool_rounds: int = 15
     default_tool_limit: int = 20
     max_tool_rows: int = 50
-    max_tool_chars: int = 16000
-    max_tool_estimated_tokens: int = 8000
+    max_tool_chars: int = 32000
+    max_tool_estimated_tokens: int = 16000
     max_regex_length: int = 50
     max_content_field_chars: int = 8000
+    content_query_limit_max: int = 50
     mongo_max_time_ms: int = 5000
 
     # 第一层：tool message 轻量剪枝。总 token 超阈值时只保留最近 N 个完整，其余占位串。
@@ -122,10 +125,6 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
-    @property
-    def content_limit_max(self) -> int:
-        """查询 content 字段时的 limit 上限（plan §9.1：查 content 时 limit 最大 10）。"""
-        return 10
 
 
 @lru_cache

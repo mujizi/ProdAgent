@@ -15,7 +15,7 @@ from app.agent.loop import run_chat_stream  # noqa: E402
 from app.history.local_history_store import get_history  # noqa: E402
 from app.logging_config import setup_logging  # noqa: E402
 
-SCRIPT_ID = "690c1b6736c9c50c40160976"
+SCRIPT_ID = "6a4f56a54bc764f6d3181d83"
 SESSION = "sess_agent_loop_test"
 
 

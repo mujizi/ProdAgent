@@ -1,4 +1,4 @@
-"""Step 3（plan §15）：Mongo 连接 + 三表各取一条 + 打印字段结构。
+"""Step 3（plan §15）：Mongo 连接 + 目标表各取一条 + 打印字段结构。
 
 运行：python scripts/test_mongo_connection.py
 """
@@ -12,7 +12,6 @@ from app.db.mongo_client import get_db, ping  # noqa: E402
 
 COLLECTIONS = [
     "seca_gen_scene_outline",
-    "seca_scene_analysis",
     "seca_element_type_detail",
 ]
 
@@ -44,7 +43,7 @@ def main():
                 preview = preview[:80] + "..."
             print(f"    {k}: ({type(v).__name__}) {preview}")
 
-    print("\n✅ Mongo 连接与三表字段结构打印完成。")
+    print("\n✅ Mongo 连接与目标表字段结构打印完成。")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""一次性探查脚本：连真库，列 DB / collection，采样三张目标表的真实字段结构。
+"""一次性探查脚本：连真库，列 DB / collection，采样目标表的真实字段结构。
 
 运行：python scripts/explore_mongo.py
 """
@@ -11,7 +11,7 @@ from pymongo import MongoClient  # noqa: E402
 
 from app.config import settings  # noqa: E402
 
-TARGETS = ["seca_gen_scene_outline", "seca_element_type_detail", "seca_scene_analysis"]
+TARGETS = ["seca_gen_scene_outline", "seca_element_type_detail"]
 
 
 def describe_value(v, depth=0):
@@ -37,7 +37,7 @@ def main():
     dbs = client.list_database_names()
     print("databases:", dbs, "\n")
 
-    # 优先使用 .env 配置的 MONGO_DB；否则找第一个三表齐全的 DB
+    # 优先使用 .env 配置的 MONGO_DB；否则找第一个目标表齐全的 DB
     target_db = settings.mongo_db or None
     if not target_db:
         for dbname in dbs:
@@ -49,7 +49,7 @@ def main():
                 break
 
     if not target_db:
-        print("\n⚠️ 未找到三表齐全的 DB")
+        print("\n⚠️ 未找到目标表齐全的 DB")
         return
 
     print(f"\n>>> 使用 DB: {target_db}\n")

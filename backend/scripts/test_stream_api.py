@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import httpx  # noqa: E402
 
 BASE = "http://localhost:8000"
-SCRIPT_ID = "690c1b6736c9c50c40160976"
+SCRIPT_ID = "6a4f56a54bc764f6d3181d83"
 
 
 def main():
